@@ -1,4 +1,16 @@
-""" """
+"""
+Fetch daily historical equity price data from the Alpha Vantage API and save it
+as a single normalized dataset for downstream pairs trading research.
+
+This script retrieves daily adjusted OHLCV data for a fixed list of ticker
+symbols, converts each API response into a standardized pandas DataFrame, filters
+the data to the configured date range, combines all symbols into one long-format
+table, and writes the result to data/raw/prices.csv.
+
+The output dataset is intended to support later stages of the project, including
+pair selection, spread construction, z-score signal generation, and baseline
+backtesting for statistical arbitrage experiments.
+"""
 
 import os
 import time
