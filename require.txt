@@ -1,0 +1,17 @@
+# Data ingestion
+pandas
+numpy
+requests
+python-dotenv
+yfinance
+
+# Statistical tests and cointegration / spread diagnostics
+statsmodels
+scipy
+
+# Genetic Algorithm optimization
+deap
+
+# Plotting and research notebooks
+matplotlib
+jupyter

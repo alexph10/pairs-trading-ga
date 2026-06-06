@@ -1,19 +1,14 @@
 """
-Fetch daily historical equity price data from the Alpha Vantage API and save it
-as a single normalized dataset for downstream pairs trading research.
+Fetch and normalize daily adjusted equity price data for pairs trading research.
 
-This script retrieves daily adjusted OHLCV data for a fixed list of ticker
-symbols, converts each API response into a standardized pandas DataFrame, filters
-the data to the configured date range, combines all symbols into one long-format
-table, and writes the result to data/raw/prices.csv.
+Primary source:  Tiingo  (keyed, SLA-backed, 30+ years of clean adjusted EOD data)
+Fallback source: Yahoo Finance via yfinance (no key, used if Tiingo is unavailable)
 
-The output dataset is intended to support later stages of the project, including
-pair selection, spread construction, z-score signal generation, and baseline
-backtesting for statistical arbitrage experiments.
+Both sources are normalized into the same standardized long-format DataFrame and
+saved to data/raw/prices.csv for downstream pair selection and backtesting.
 """
 
 import os
-import time
 from pathlib import Path
 
 import pandas as pd
@@ -22,85 +17,154 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-BASE_URL = "https://www.alphavantage.co/query"
-API_KEY = os.getenv("ALPHA_VANTAGE_API_KEY")
-
-TICKERS = ["AAPL", "MSFT", "GOOGL"]
-START_DATE = "2016-01-01"
-END_DATE = "2026-01-01"
+# Large-cap universe grouped by sector. Pairs are most likely to cointegrate
+# within a sector, so candidates are drawn from same-sector names.
+TICKERS = [
+    # Mega-cap tech
+    "AAPL", "MSFT", "GOOGL", "META", "NVDA", "AMD",
+    # Banks / financials
+    "JPM", "BAC", "WFC", "C", "GS", "MS",
+    # Payments
+    "V", "MA",
+    # Energy
+    "XOM", "CVX", "COP", "SLB",
+    # Consumer staples
+    "KO", "PEP", "PG", "CL",
+    # Retail
+    "WMT", "TGT", "COST", "HD", "LOW",
+    # Healthcare / pharma
+    "JNJ", "PFE", "MRK", "ABBV",
+    # Telecom
+    "VZ", "T",
+]
+START_DATE = pd.Timestamp("2016-01-01")
+END_DATE = pd.Timestamp("2026-01-01")
 OUTPUT_PATH = Path("data/raw/prices.csv")
 
-if not API_KEY:
-    raise ValueError("Missing ALPHA_VANTAGE_API_KEY in environment variables")
+TIINGO_API_KEY = os.getenv("TIINGO_API_KEY")
+TIINGO_BASE_URL = "https://api.tiingo.com/tiingo/daily"
+
+COLUMNS = ["date", "ticker", "open", "high", "low", "close", "adj_close", "volume"]
 
 
-def fetch_symbol_data(symbol: str) -> dict:
-    params = {
-        "function": "TIME_SERIES_DAILY_ADJUSTED",
-        "symbol": symbol,
-        "outputsize": "full",
-        "apikey": API_KEY,
-    }
-
-    response = requests.get(BASE_URL, params=params, timeout=30)
-    response.raise_for_status()
-    data = response.json()
-
-    if "Error Message" in data:
-        raise ValueError(f"API error for {symbol}: {data['Error Message']}")
-
-    if "Note" in data:
-        raise ValueError(f"Rate limit hit for {symbol}: {data['Note']}")
-
-    if "Time Series (Daily)" not in data:
-        raise ValueError(f"Unexpected response for {symbol}: {data}")
-
-    return data["Time Series (Daily)"]
-
-
-def transform_symbol_data(symbol: str, raw_data: dict) -> pd.DataFrame:
-    df = pd.DataFrame(raw_data).T
-    df.index.name = "date"
-    df = df.reset_index()
-
-    df = df.rename(
-        columns={
-            "1. open": "open",
-            "2. high": "high",
-            "3. low": "low",
-            "4. close": "close",
-            "5. adjusted close": "adj_close",
-            "6. volume": "volumn",
-        }
-    )
-
+def _finalize(df: pd.DataFrame, symbol: str) -> pd.DataFrame:
+    """Coerce types, clip to date range, and return standardized columns."""
     df["ticker"] = symbol
-    df["date"] = pd.to_datetime(df["date"])
+    df["date"] = pd.to_datetime(df["date"]).dt.tz_localize(None).dt.normalize()
 
     numeric_cols = ["open", "high", "low", "close", "adj_close", "volume"]
     df[numeric_cols] = df[numeric_cols].apply(pd.to_numeric, errors="coerce")
 
     df = df[(df["date"] >= START_DATE) & (df["date"] <= END_DATE)]
-    df = df.sort_values("date").reset_index(drop=True)
+    df = df.dropna(subset=["close", "adj_close"])
+    return df[COLUMNS]
 
-    return df[["date", "ticker", "open", "high", "low", "close", "adj_close", "volume"]]
+
+# Primary source: Tiingo
+def fetch_tiingo_symbol(symbol: str) -> pd.DataFrame:
+    """Fetch one symbol's adjusted EOD history from the Tiingo REST API."""
+    url = f"{TIINGO_BASE_URL}/{symbol}/prices"
+    params = {
+        "startDate": START_DATE.strftime("%Y-%m-%d"),
+        "endDate": END_DATE.strftime("%Y-%m-%d"),
+        "format": "json",
+        "token": TIINGO_API_KEY,
+    }
+    headers = {"Content-Type": "application/json"}
+
+    response = requests.get(url, params=params, headers=headers, timeout=30)
+    response.raise_for_status()
+    data = response.json()
+
+    if not isinstance(data, list) or not data:
+        raise ValueError(f"Tiingo returned no data for {symbol}: {data}")
+
+    df = pd.DataFrame(data).rename(
+        columns={
+            "open": "open",
+            "high": "high",
+            "low": "low",
+            "close": "close",
+            "adjClose": "adj_close",
+            "volume": "volume",
+        }
+    )
+    return _finalize(df, symbol)
 
 
-all_frames = []
+def fetch_tiingo(tickers: list[str]) -> pd.DataFrame:
+    if not TIINGO_API_KEY:
+        raise ValueError("Missing TIINGO_API_KEY in environment variables")
 
-for symbol in TICKERS:
-    print(f"Fetching {symbol}...")
-    raw_data = fetch_symbol_data(symbol)
-    df_symbol = transform_symbol_data(symbol, raw_data)
-    all_frames.append(df_symbol)
-    time.sleep(12)
+    frames = []
+    for symbol in tickers:
+        print(f"[tiingo] fetching {symbol}...")
+        frames.append(fetch_tiingo_symbol(symbol))
 
-prices = pd.concat(all_frames, ignore_index=True)
+    prices = pd.concat(frames, ignore_index=True)
+    return prices.sort_values(["ticker", "date"]).reset_index(drop=True)
 
-OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-prices.to_csv(OUTPUT_PATH, index=False)
+# Fallback source: Yahoo Finance (yfinance)
+def fetch_yfinance(tickers: list[str]) -> pd.DataFrame:
+    import yfinance as yf
 
-print(
-    f"Saved {len(prices)} rows for {prices['ticker'].nunique()} tickers to {OUTPUT_PATH}"
-)
+    data = yf.download(
+        tickers,
+        start=START_DATE,
+        end=END_DATE,
+        auto_adjust=False,  # keep raw close and a separate Adj Close column
+        group_by="ticker",
+        progress=False,
+        threads=True,
+    )
+
+    if data.empty:
+        raise ValueError("yfinance returned no data; check tickers / date range")
+
+    frames = []
+    for symbol in tickers:
+        print(f"[yfinance] processing {symbol}...")
+        df = data[symbol].copy() if len(tickers) > 1 else data.copy()
+        df = df.dropna(how="all").reset_index().rename(
+            columns={
+                "Date": "date",
+                "Open": "open",
+                "High": "high",
+                "Low": "low",
+                "Close": "close",
+                "Adj Close": "adj_close",
+                "Volume": "volume",
+            }
+        )
+        frames.append(_finalize(df, symbol))
+
+    prices = pd.concat(frames, ignore_index=True)
+    return prices.sort_values(["ticker", "date"]).reset_index(drop=True)
+
+
+# Orchestration
+def fetch_prices(tickers: list[str]) -> pd.DataFrame:
+    """Try Tiingo first; fall back to yfinance on any failure."""
+    try:
+        return fetch_tiingo(tickers)
+    except Exception as exc:  # noqa: BLE001 - any failure should trigger fallback
+        print(f"[warn] Tiingo unavailable ({exc}); falling back to yfinance...")
+        return fetch_yfinance(tickers)
+
+
+def main() -> None:
+    print(f"Fetching {len(TICKERS)} tickers...")
+    prices = fetch_prices(TICKERS)
+
+    OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    prices.to_csv(OUTPUT_PATH, index=False)
+
+    print(
+        f"Saved {len(prices)} rows for {prices['ticker'].nunique()} tickers "
+        f"to {OUTPUT_PATH}"
+    )
+
+
+if __name__ == "__main__":
+    main()
