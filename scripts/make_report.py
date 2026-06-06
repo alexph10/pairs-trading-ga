@@ -1,16 +1,3 @@
-"""
-Generate a visual report for the dollar-based pairs backtest.
-
-Produces a single figure with three stacked panels:
-  1. Equity curve      - account value over time.
-  2. Drawdown          - percentage decline from the running peak.
-  3. Z-score + trades  - the signal with entry/exit markers and the entry/exit
-                         threshold bands, for visually sanity-checking the logic.
-
-Reads data/processed/backtest_dollars.csv. By default it saves a PNG to out/;
-pass --show to open the figure in an interactive popup window instead.
-"""
-
 import argparse
 from pathlib import Path
 
@@ -103,7 +90,7 @@ def main() -> None:
     print(f"  final equity: ${df['equity'].iloc[-1]:,.0f} | max drawdown: {drawdown.min():.2f}%")
 
     if args.show:
-        plt.show()  # blocks until you close the window
+        plt.show()
     else:
         OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
         fig.savefig(OUTPUT_PATH, dpi=130)
