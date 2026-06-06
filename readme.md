@@ -4,7 +4,7 @@ A research-oriented pairs trading repository for learning, reimplementing, and e
 
 #### Overview
 
-Converge studies a simple but widely used form of statistical arbitrage: pairs trading. In this setting, two related assets are monitored for deviations in their historical relationship, and long/short trades are entered when the spread between them moves far enough from its typical range and is expected to revert. This approach is commonly framed as a market-neutral or relative-value strategy built around spread convergence rather than outright directional prediction.
+studies a simple form of statistical arbitrage: pairs trading. In this setting, two related assets are monitored for deviations in their historical relationship, and long/short trades are entered when the spread between them moves far enough from its typical range and is expected to revert. This approach is commonly framed as a market-neutral or relative-value strategy built around spread convergence rather than outright directional prediction.
 
 The repository is structured as a learning-first research lab. The first goal is to reproduce a clean baseline workflow: obtain historical price data, identify candidate pairs, construct a spread, generate z-score trading signals, and backtest the resulting strategy. Once that baseline is working, the project will extend the pipeline with optimization methods, especially Genetic Algorithms, to explore improvements in threshold selection, position sizing, and trade management.
 
