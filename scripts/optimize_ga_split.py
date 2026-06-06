@@ -1,5 +1,5 @@
 """
-Robust GA optimization of the pairs-trading strategy.
+Robust GA optimization of the pairs-trading strategy
 
 Defenses against overfitting:
   1. Train/test split   - parameters are evolved only on the in-sample period
