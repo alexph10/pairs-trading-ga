@@ -38,3 +38,7 @@ def main() -> None:
     n_sig = int(pairs["cointegrated"].sum())
     print(f"Scanned {len(pairs)} pairs; {n_sig} cointegrated (p < {PVALUE_THRESHOLD})")
     print(pairs.head(10).to_string(index=False))
+
+
+if __name__ == "__main__":
+    main()
