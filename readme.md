@@ -1,4 +1,4 @@
-A pairs trading repository for learning and reimplementing canonical statistical arbitrage workflows on large-cap equities. The project focuses on spread-based mean-reversion, cointegrated pair selection, z-score signal generation, and baseline backtesting, with planned extensions using Genetic Algorithms for selected trading and risk-management parameters.
+A pairs trading repository for learning and reimplementing canonical statistical arbitrage workflows on large-cap equities. The project focuses on spread-based mean-reversion, cointegrated pair selection, z-score signal generation, and baseline backtesting, with planned extensions using Genetic Algorithms for selected trading and risk-management parameters
 
 <img width="1690" height="1430" alt="backtest_report" src="https://github.com/user-attachments/assets/01056cef-6402-43a8-8c3b-f175eb104e60" />
 
