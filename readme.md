@@ -9,27 +9,18 @@ The first goal is to reproduce a clean baseline workflow: obtain historical pric
 
 #### What the project is
 
-1. Fetch historical equity price data from an external data source.
-2. Prepare and validate aligned time series.
-3. Select candidate pairs using relationship and stationarity criteria.
-4. Construct and standardize the spread.
-5. Generate long/short entry and exit signals.
-6. Backtest the baseline strategy.
-7. Explore optimization extensions with Genetic Algorithms.
+1. Fetch historical equity price data from an external data source
+2. Prepare and validate aligned time series
+3. Select candidate pairs using relationship and stationarity criteria
+4. Construct and standardize the spread
+5. Generate long/short entry and exit signals
+6. Backtest the baseline strategy
+7. Explore optimization extensions with GA
 
 #### Current scope
-
-The current version focuses on:
 
 - Large-cap equity pairs
 - Daily historical price data
 - Spread-based mean-reversion logic
 - Simple baseline backtesting
 - Research-oriented experimentation in notebooks and scripts
-
-The intended Genetic Algorithm extension is meant to optimize interpretable parts of the pipeline, such as:
-
-- trading thresholds,
-- position sizing rules,
-- volatility scaling,
-- or drawdown-aware trade management.
