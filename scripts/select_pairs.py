@@ -14,10 +14,31 @@ PANEL_PATH = Path("data/processed/adj_close.csv")
 OUTPUT_PATH = Path("data/processed/pairs.csv")
 PVALUE_THRESHOLD = 0.05
 
+# Pairs are only tested within a sector; cross-sector cointegration is usually spurious.
+SECTORS = {
+    "tech":     ["AAPL", "MSFT", "GOOGL", "META", "NVDA", "AMD"],
+    "banks":    ["JPM", "BAC", "WFC", "C", "GS", "MS"],
+    "payments": ["V", "MA"],
+    "energy":   ["XOM", "CVX", "COP", "SLB"],
+    "staples":  ["KO", "PEP", "PG", "CL"],
+    "retail":   ["WMT", "TGT", "COST", "HD", "LOW"],
+    "pharma":   ["JNJ", "PFE", "MRK", "ABBV"],
+    "telecom":  ["VZ", "T"],
+}
+
+
+def same_sector_pairs(columns) -> list[tuple[str, str]]:
+    available = set(columns)
+    pairs = []
+    for members in SECTORS.values():
+        present = [t for t in members if t in available]
+        pairs.extend(combinations(present, 2))
+    return pairs
+
 
 def scan_pairs(panel: pd.DataFrame) -> pd.DataFrame:
     results = []
-    for a, b in combinations(panel.columns, 2):
+    for a, b in same_sector_pairs(panel.columns):
         # coint returns (test_statistic, p_value, critical_values)
         _, pvalue, _ = coint(panel[a], panel[b])
         results.append({"ticker_a": a, "ticker_b": b, "pvalue": pvalue})

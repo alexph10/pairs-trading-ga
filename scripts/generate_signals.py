@@ -9,8 +9,6 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from scripts.select_pairs import OUTPUT_PATH
-
 SPREAD_PATH = Path("data/processed/spread.csv")
 OUTPUT_PATH = Path("data/processed/signals.csv")
 
@@ -54,3 +52,10 @@ def main() -> None:
 
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(OUTPUT_PATH, index=False)
+
+    trades = int((df["position"].diff().abs() > 0).sum())
+    print(f"Generated signals: {trades} position changes over {len(df)} days")
+
+
+if __name__ == "__main__":
+    main()

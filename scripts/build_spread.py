@@ -20,29 +20,31 @@ def estimate_hedge_ratio(price_a: pd.Series, price_b: pd.Series) -> float:
     return model.params[price_b.name]
 
 
-def build_spread(panel: pd.DataFrame, a: str, b: str) -> pd.DataFrame:
-    beta = estimate_hedge_ratio(panel[a], panel[b])
-    spread = panel[a] - beta * panel[b]
-
-    out = pd.DataFrame({"date": panel.index, "spread": spread.values})
-    out["ticker_a"] = a
-    out["ticker_b"] = b
-    out["beta"] = beta
-    return out
+def select_best_pair(panel: pd.DataFrame, pairs: pd.DataFrame):
+    # Walk pairs from most to least cointegrated; take the first one whose
+    # hedge ratio is positive (a genuine co-moving relationship).
+    for _, row in pairs[pairs["cointegrated"]].iterrows():
+        a, b = row["ticker_a"], row["ticker_b"]
+        beta = estimate_hedge_ratio(panel[a], panel[b])
+        if beta > 0:
+            return a, b, beta, row["pvalue"]
+    raise ValueError("No cointegrated pair with positive beta found")
 
 
 def main() -> None:
     panel = pd.read_csv(PANEL_PATH, index_col="date", parse_dates=True)
     pairs = pd.read_csv(PAIRS_PATH)
 
-    best = pairs.iloc[0]
-    a, b = best["ticker_a"], best["ticker_b"]
-    print(f"Building spread for {a}--{b} (p={best['pvalue']:.4f})")
+    a, b, beta, pvalue = select_best_pair(panel, pairs)
+    print(f"Building spread for {a}-{b} (p={pvalue:.4f}, beta={beta:.4f})")
 
-    spread = build_spread(panel, a, b)
+    spread = panel[a] - beta * panel[b]
+    out = pd.DataFrame({"date": panel.index, "spread": spread.values})
+    out["ticker_a"], out["ticker_b"], out["beta"] = a, b, beta
+
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    spread.to_csv(OUTPUT_PATH, index=False)
-    print(f"beta = {spread['beta'].iloc[0]:.4f} | saved {len(spread)} rows")
+    out.to_csv(OUTPUT_PATH, index=False)
+    print(f"beta = {beta:.4f} | saved {len(out)} rows")
 
 
 if __name__ == "__main__":
