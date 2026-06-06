@@ -177,8 +177,11 @@ def average_sharpe(spreads: list[dict], key: str, params: tuple) -> float:
 
 def build_toolbox(spreads: list[dict]) -> base.Toolbox:
     """Wire up DEAP; fitness is the penalized average train Sharpe."""
-    creator.create("FitnessMax", base.Fitness, weights=(1.0,))
-    creator.create("Individual", list, fitness=creator.FitnessMax)
+    # Guard so the GA can be rebuilt repeatedly (e.g. per walk-forward fold).
+    if not hasattr(creator, "FitnessMax"):
+        creator.create("FitnessMax", base.Fitness, weights=(1.0,))
+    if not hasattr(creator, "Individual"):
+        creator.create("Individual", list, fitness=creator.FitnessMax)
 
     def evaluate(individual: list[float]) -> tuple[float]:
         params = decode(individual)
