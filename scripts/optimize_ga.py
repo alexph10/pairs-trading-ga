@@ -1,5 +1,5 @@
 """
-Optimize the pairs-trading signal params with a Genetic Algo (DEAP)
+Optimize the pairs-trading signal params
 Each individual is a parameter set [window, entry_z, exit_z]; fitness is the
 annualized Sharpe of the resulting backtest. The GA evolves better parameters
 than hand-tuning, while keeping every knob interpretable
