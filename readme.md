@@ -1,5 +1,7 @@
 A research-oriented pairs trading repository for learning, reimplementing, and extending canonical statistical arbitrage workflows on large-cap equities. The project focuses on spread-based mean-reversion, cointegration-driven pair selection, z-score signal generation, and baseline backtesting, with planned extensions using Genetic Algorithm optimization for selected trading and risk-management parameters.
 
+<img width="1690" height="1430" alt="backtest_report" src="https://github.com/user-attachments/assets/01056cef-6402-43a8-8c3b-f175eb104e60" />
+
 #### Overview
 
 Converge studies a simple but widely used form of statistical arbitrage: pairs trading. In this setting, two related assets are monitored for deviations in their historical relationship, and long/short trades are entered when the spread between them moves far enough from its typical range and is expected to revert. This approach is commonly framed as a market-neutral or relative-value strategy built around spread convergence rather than outright directional prediction.
